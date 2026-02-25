@@ -1,0 +1,43 @@
+services:
+  emqx:
+    image: emqx/emqx:5.8.3
+    container_name: emqx
+    environment:
+      - "EMQX_NODE_NAME=emqx@node1.emqx.io"
+      - "EMQX_CLUSTER__DISCOVERY_STRATEGY=static"
+      - "EMQX_CLUSTER__STATIC__SEEDS=[emqx@node1.emqx.io]"
+      - "EMQX_LOADED_PLUGINS=emqx_recon,emqx_retainer,emqx_management,emqx_dashboard"
+      - "EMQX_DASHBOARD__DEFAULT_USERNAME=admin"
+      - "EMQX_DASHBOARD__DEFAULT_PASSWORD=public"
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "8084:8084"
+      - "8883:8883"
+      - "18083:18083"
+    volumes:
+      - emqx-data:/opt/emqx/data
+    networks:
+      - atg-net
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: timescaledb
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=atg_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    networks:
+      - atg-net
+
+volumes:
+  emqx-data:
+  timescale-data:
+
+networks:
+  atg-net:
+    driver: bridge

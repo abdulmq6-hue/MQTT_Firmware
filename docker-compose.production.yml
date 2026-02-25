@@ -1,0 +1,336 @@
+version: '3.8'
+
+# ATG Monitoring System - Production Docker Compose
+# Version: 2.0
+# Usage: docker-compose -f docker-compose.production.yml up -d
+
+services:
+  # ===========================================
+  # EMQX MQTT Broker
+  # ===========================================
+  emqx:
+    image: emqx/emqx:5.8.3
+    container_name: atg-emqx
+    hostname: emqx
+    restart: unless-stopped
+    environment:
+      - EMQX_NODE_NAME=emqx@emqx
+      - EMQX_CLUSTER__DISCOVERY_STRATEGY=static
+      - EMQX_CLUSTER__STATIC__SEEDS=[emqx@emqx]
+      # Dashboard credentials
+      - EMQX_DASHBOARD__DEFAULT_USERNAME=admin
+      - EMQX_DASHBOARD__DEFAULT_PASSWORD=${EMQX_DASHBOARD_PASSWORD:-public}
+      # Authentication
+      - EMQX_AUTHENTICATION__1__MECHANISM=password_based
+      - EMQX_AUTHENTICATION__1__BACKEND=built_in_database
+      - EMQX_AUTHENTICATION__1__PASSWORD_HASH_ALGORITHM__NAME=bcrypt
+      # Authorization
+      - EMQX_AUTHORIZATION__NO_MATCH=deny
+      - EMQX_AUTHORIZATION__SOURCES__1__TYPE=built_in_database
+      - EMQX_AUTHORIZATION__SOURCES__1__ENABLE=true
+      # Listeners
+      - EMQX_LISTENERS__TCP__DEFAULT__MAX_CONNECTIONS=1000000
+      - EMQX_LISTENERS__TCP__DEFAULT__MAX_CONN_RATE=1000
+      # Performance tuning
+      - EMQX_RETAINER__ENABLE=true
+      - EMQX_RETAINER__MAX_RETAINED_MESSAGES=10000
+    ports:
+      - "1883:1883"      # MQTT TCP
+      - "8083:8083"      # MQTT WebSocket
+      - "8084:8084"      # MQTT WebSocket SSL
+      - "8883:8883"      # MQTT SSL
+      - "18083:18083"    # Dashboard
+    volumes:
+      - emqx-data:/opt/emqx/data
+      - emqx-log:/opt/emqx/log
+      - ./config/emqx/acl.conf:/opt/emqx/etc/acl.conf:ro
+    networks:
+      - atg-network
+    healthcheck:
+      test: ["CMD", "emqx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # ===========================================
+  # TimescaleDB (PostgreSQL with time-series)
+  # ===========================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: atg-timescaledb
+    hostname: timescaledb
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER:-atg_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-atg_secure_password}
+      - POSTGRES_DB=${DB_NAME:-atg_db}
+      # Performance tuning
+      - POSTGRES_INITDB_ARGS=--data-checksums
+      - TS_TUNE_MEMORY=2GB
+      - TS_TUNE_NUM_CPUS=4
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/002-seed.sql:ro
+    networks:
+      - atg-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-atg_user} -d ${DB_NAME:-atg_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=timescaledb"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "work_mem=64MB"
+      - "-c"
+      - "maintenance_work_mem=512MB"
+      - "-c"
+      - "effective_cache_size=2GB"
+
+  # ===========================================
+  # Redis (Caching & Session Store)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: atg-redis
+    hostname: redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_password}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - atg-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secure_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+
+  # ===========================================
+  # Backend API Service (Node.js)
+  # ===========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: atg-backend:latest
+    container_name: atg-backend
+    hostname: backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Database
+      - DATABASE_URL=postgresql://${DB_USER:-atg_user}:${DB_PASSWORD:-atg_secure_password}@timescaledb:5432/${DB_NAME:-atg_db}
+      - DB_POOL_MIN=5
+      - DB_POOL_MAX=20
+      # MQTT
+      - MQTT_BROKER_URL=mqtt://emqx:1883
+      - MQTT_USERNAME=${MQTT_USERNAME:-admin}
+      - MQTT_PASSWORD=${MQTT_PASSWORD:-public}
+      - MQTT_CLIENT_ID=atg-backend-${HOSTNAME:-main}
+      # Redis
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379
+      # JWT
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      # Logging
+      - LOG_LEVEL=info
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      emqx:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - atg-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ===========================================
+  # Frontend (React/Vue - Production Build)
+  # ===========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: atg-frontend:latest
+    container_name: atg-frontend
+    hostname: frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://backend:3000
+      - VITE_WS_URL=ws://backend:3000
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_SSL_PORT:-443}:443"
+    depends_on:
+      - backend
+    networks:
+      - atg-network
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '1.0'
+        reservations:
+          memory: 64M
+          cpus: '0.25'
+
+  # ===========================================
+  # Nginx Reverse Proxy (Optional - for SSL)
+  # ===========================================
+  nginx:
+    image: nginx:alpine
+    container_name: atg-nginx
+    hostname: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./config/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - atg-network
+    profiles:
+      - production
+
+  # ===========================================
+  # Grafana (Monitoring Dashboard - Optional)
+  # ===========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: atg-grafana
+    hostname: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - atg-network
+    depends_on:
+      - timescaledb
+    profiles:
+      - monitoring
+
+  # ===========================================
+  # Prometheus (Metrics Collection - Optional)
+  # ===========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: atg-prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - atg-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    profiles:
+      - monitoring
+
+# ===========================================
+# Volumes
+# ===========================================
+volumes:
+  emqx-data:
+    driver: local
+  emqx-log:
+    driver: local
+  timescale-data:
+    driver: local
+  redis-data:
+    driver: local
+  grafana-data:
+    driver: local
+  prometheus-data:
+    driver: local
+
+# ===========================================
+# Networks
+# ===========================================
+networks:
+  atg-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

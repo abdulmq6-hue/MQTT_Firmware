@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATG Simulator - Stingray Technologies</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0a1628;
+            --secondary: #1a2d4a;
+            --accent: #00d4ff;
+            --accent-green: #00ff88;
+            --accent-orange: #ff9500;
+            --accent-red: #ff4757;
+            --text: #ffffff;
+            --text-muted: #8892a0;
+            --card-bg: rgba(26, 45, 74, 0.8);
+            --border: rgba(0, 212, 255, 0.3);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, #0d2137 50%, var(--primary) 100%);
+            min-height: 100vh;
+            color: var(--text);
+        }
+
+        /* Header */
+        .header {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-section img {
+            height: 50px;
+            width: auto;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .atg-count {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .atg-count-number {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0 30px;
+        }
+
+        .nav-tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-tab:hover {
+            color: var(--text);
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .nav-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 30px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid var(--border);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+            .grid-3 { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        /* ATG Card */
+        .atg-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .atg-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+        }
+
+        .atg-card.disabled {
+            opacity: 0.5;
+        }
+
+        .atg-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .atg-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .atg-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .atg-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-green);
+        }
+
+        .atg-status-dot.disabled {
+            background: var(--text-muted);
+        }
+
+        .atg-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .atg-info-item {
+            font-size: 12px;
+        }
+
+        .atg-info-label {
+            color: var(--text-muted);
+        }
+
+        .atg-info-value {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .atg-gauges {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .mini-gauge {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .mini-gauge-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .mini-gauge-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .atg-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .atg-actions button {
+            flex: 1;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 11px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #0095b3);
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--accent-green), #00b362);
+            color: var(--primary);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-red), #c0392b);
+            color: var(--text);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 26px;
+            transition: 0.4s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.4s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: var(--accent-green);
+        }
+
+        .toggle input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        /* History Table */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-table th {
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+
+        .history-table td {
+            color: var(--text);
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        /* Log Console */
+        .log-console {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            margin-right: 10px;
+        }
+
+        .log-message.success { color: var(--accent-green); }
+        .log-message.error { color: var(--accent-red); }
+        .log-message.warning { color: var(--accent-orange); }
+        .log-message.info { color: var(--accent); }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--secondary);
+            border-radius: 15px;
+            border: 1px solid var(--border);
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ATG List Container */
+        .atg-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .no-atg-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .no-atg-message h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 4px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 30px;
+        }
+
+        /* Slider */
+        .slider-container {
+            padding: 10px 0;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .slider-label {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .slider-value {
+            font-size: 13px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo-section">
+            <img src="SRT_Logo.png" alt="Stingray Technologies Logo" onerror="this.style.display='none'">
+            <div>
+                <div class="logo-text">ATG Simulator</div>
+                <div class="logo-subtitle">Stingray Technologies</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="atg-count">
+                <span>ATGs:</span>
+                <span class="atg-count-number" id="atgCountDisplay">0</span>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="connectionStatus"></div>
+                <span id="connectionText">Disconnected</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+        <button class="nav-tab" data-tab="atg-management">ATG Management</button>
+        <button class="nav-tab" data-tab="configuration">MQTT Configuration</button>
+        <button class="nav-tab" data-tab="history">History</button>
+        <button class="nav-tab" data-tab="logs">Logs</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="dashboard">
+            <!-- Control Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Simulation Control</h3>
+                    <span id="lastUpdate" style="color: var(--text-muted); font-size: 12px;">Last update: --</span>
+                </div>
+                <div class="control-panel" style="margin-bottom: 20px;">
+                    <button class="btn btn-success" id="startBtn" onclick="startSimulation()">
+                        &#9658; Start All
+                    </button>
+                    <button class="btn btn-danger" id="stopBtn" onclick="stopSimulation()" disabled>
+                        &#9632; Stop All
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetSimulation()">
+                        &#8635; Reset
+                    </button>
+                    <button class="btn btn-primary" onclick="openAddATGModal()">
+                        + Add ATG
+                    </button>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalAtgCount">0</div>
+                        <div class="stat-label">Total ATGs</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalMessageCount">0</div>
+                        <div class="stat-label">Messages Sent</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="uptime">00:00:00</div>
+                        <div class="stat-label">Session Uptime</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="publishRate">0/s</div>
+                        <div class="stat-label">Publish Rate</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalErrorCount">0</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATG Cards -->
+            <div class="atg-list" id="atgDashboardList">
+                <div class="no-atg-message">
+                    <h3>No ATGs Configured</h3>
+                    <p>Click "Add ATG" to create your first ATG simulator</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ATG Management Tab -->
+        <div class="tab-content" id="atg-management">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">ATG Management</h3>
+                    <button class="btn btn-primary" onclick="openAddATGModal()">+ Add New ATG</button>
+                </div>
+                <div class="atg-list" id="atgManagementList">
+                    <div class="no-atg-message">
+                        <h3>No ATGs Configured</h3>
+                        <p>Click "Add New ATG" to create your first ATG simulator</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div class="tab-content" id="configuration">
+            <div class="grid-2">
+                <!-- MQTT Configuration -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">MQTT Broker Settings</h3>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Broker IP Address</label>
+                            <input type="text" class="form-input" id="brokerIP" value="127.0.0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Broker Port</label>
+                            <input type="number" class="form-input" id="brokerPort" value="1883">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-input" id="mqttUsername" value="duc">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-input" id="mqttPassword" value="SRT123">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">QoS Level</label>
+                            <select class="form-input" id="qosLevel">
+                                <option value="0">0 - At most once</option>
+                                <option value="1" selected>1 - At least once</option>
+                                <option value="2">2 - Exactly once</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Keep Alive (seconds)</label>
+                            <input type="number" class="form-input" id="keepAlive" value="60">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="toggle-container">
+                            <label class="toggle">
+                                <input type="checkbox" id="cleanSession" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span>Clean Session</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Actions</h3>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <button class="btn btn-primary" onclick="saveMQTTConfig()">Save Configuration</button>
+                        <button class="btn btn-secondary" onclick="testConnection()">Test Connection</button>
+                        <button class="btn btn-secondary" onclick="resetMQTTConfig()">Reset to Defaults</button>
+                    </div>
+
+                    <div style="margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                        <h4 style="color: var(--accent); margin-bottom: 15px;">Connection Status</h4>
+                        <div id="connectionDetails">
+                            <p><strong>Broker:</strong> <span id="detailBroker">--</span></p>
+                            <p><strong>Status:</strong> <span id="detailStatus">Disconnected</span></p>
+                            <p><strong>Last Test:</strong> <span id="detailLastTest">--</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div class="tab-content" id="history">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Message History</h3>
+                    <div class="control-panel">
+                        <button class="btn btn-secondary" onclick="clearHistory()">Clear</button>
+                        <button class="btn btn-primary" onclick="exportHistory()">Export CSV</button>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Timestamp</th>
+                                <th>ATG Name</th>
+                                <th>Topic</th>
+                                <th>Product Type</th>
+                                <th>Address</th>
+                                <th>Temperature</th>
+                                <th>Product</th>
+                                <th>Water</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="10" style="text-align: center; color: var(--text-muted);">No data yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div class="tab-content" id="logs">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">System Logs</h3>
+                    <div class="control-panel">
+                        <button class="btn btn-secondary" onclick="clearLogs()">Clear</button>
+                        <button class="btn btn-primary" onclick="exportLogs()">Export</button>
+                    </div>
+                </div>
+                <div class="log-console" id="logConsole">
+                    <div class="log-entry">
+                        <span class="log-time">[--:--:--]</span>
+                        <span class="log-message info">ATG Simulator initialized. Ready to start.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 Stingray Technologies. All rights reserved. | ATG Simulator v2.0 (Multi-ATG)</p>
+    </footer>
+
+    <!-- Add/Edit ATG Modal -->
+    <div class="modal-overlay" id="atgModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Add New ATG</h3>
+                <button class="modal-close" onclick="closeATGModal()">&times;</button>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">ATG Name</label>
+                    <input type="text" class="form-input" id="atgName" placeholder="e.g., Tank 1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Probe Address</label>
+                    <input type="text" class="form-input" id="atgAddress" placeholder="e.g., 83729">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">MQTT Topic</label>
+                    <input type="text" class="form-input" id="atgTopic" placeholder="e.g., ATG83729">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Publish Interval (seconds)</label>
+                    <input type="number" class="form-input" id="atgInterval" value="2" min="0.5" step="0.5">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Product Type</label>
+                <select class="form-input" id="atgProductType">
+                    <option value="Diesel">Diesel</option>
+                    <option value="Petrol">Petrol</option>
+                    <option value="Oil">Oil</option>
+                    <option value="Chemical">Chemical</option>
+                    <option value="Kerosene">Kerosene</option>
+                    <option value="LPG">LPG</option>
+                    <option value="Water">Water</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <h4 style="color: var(--accent); margin: 20px 0 15px;">Initial Sensor Values</h4>
+
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label class="form-label">Temperature (&deg;C)</label>
+                    <input type="number" class="form-input" id="atgTemp" value="25.13" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Level (mm)</label>
+                    <input type="number" class="form-input" id="atgProduct" value="1234.12" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Water Level (mm)</label>
+                    <input type="number" class="form-input" id="atgWater" value="12.98" step="0.01">
+                </div>
+            </div>
+
+            <h4 style="color: var(--accent); margin: 20px 0 15px;">Simulation Options</h4>
+
+            <div class="form-group">
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="atgAutoVariation">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Enable Auto Variation</span>
+                </div>
+            </div>
+
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label class="form-label">Temp Variance (&plusmn;&deg;C)</label>
+                    <input type="number" class="form-input" id="atgTempVariance" value="0.5" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Variance (&plusmn;mm)</label>
+                    <input type="number" class="form-input" id="atgProductVariance" value="2" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Water Variance (&plusmn;mm)</label>
+                    <input type="number" class="form-input" id="atgWaterVariance" value="0.5" step="0.1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="atgSimulateTrend">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Simulate Product Consumption</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Consumption Rate (mm/min)</label>
+                <input type="number" class="form-input" id="atgConsumptionRate" value="0.5" step="0.1">
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="atgEnabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Enabled</span>
+                </div>
+            </div>
+
+            <input type="hidden" id="editingATGId">
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeATGModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveATG()">Save ATG</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== API Base URL =====
+        const API_BASE = window.location.origin;
+
+        // ===== Global State =====
+        let simulationRunning = false;
+        let statusPollInterval = null;
+        let uptimeInterval = null;
+        let startTime = null;
+        let atgList = [];
+        let historyData = [];
+
+        // ===== API Helper =====
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                if (data) options.body = JSON.stringify(data);
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                addLog(`API Error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // ===== Tab Navigation =====
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ===== ATG Modal Functions =====
+        function openAddATGModal() {
+            document.getElementById('modalTitle').textContent = 'Add New ATG';
+            document.getElementById('editingATGId').value = '';
+            document.getElementById('atgName').value = '';
+            document.getElementById('atgAddress').value = '';
+            document.getElementById('atgTopic').value = '';
+            document.getElementById('atgInterval').value = '2';
+            document.getElementById('atgProductType').value = 'Diesel';
+            document.getElementById('atgTemp').value = '25.13';
+            document.getElementById('atgProduct').value = '1234.12';
+            document.getElementById('atgWater').value = '12.98';
+            document.getElementById('atgAutoVariation').checked = false;
+            document.getElementById('atgTempVariance').value = '0.5';
+            document.getElementById('atgProductVariance').value = '2';
+            document.getElementById('atgWaterVariance').value = '0.5';
+            document.getElementById('atgSimulateTrend').checked = false;
+            document.getElementById('atgConsumptionRate').value = '0.5';
+            document.getElementById('atgEnabled').checked = true;
+            document.getElementById('atgModal').classList.add('active');
+        }
+
+        function openEditATGModal(atgId) {
+            const atg = atgList.find(a => a.id === atgId);
+            if (!atg) return;
+
+            document.getElementById('modalTitle').textContent = 'Edit ATG';
+            document.getElementById('editingATGId').value = atgId;
+            document.getElementById('atgName').value = atg.name || '';
+            document.getElementById('atgAddress').value = atg.address || '';
+            document.getElementById('atgTopic').value = atg.topic || '';
+            document.getElementById('atgInterval').value = atg.publish_interval || 2;
+            document.getElementById('atgProductType').value = atg.product_type || 'Diesel';
+            document.getElementById('atgTemp').value = atg.sensor_data?.Temp || 25.13;
+            document.getElementById('atgProduct').value = atg.sensor_data?.Product || 1234.12;
+            document.getElementById('atgWater').value = atg.sensor_data?.Water || 12.98;
+            document.getElementById('atgAutoVariation').checked = atg.auto_variation || false;
+            document.getElementById('atgTempVariance').value = atg.temp_variance || 0.5;
+            document.getElementById('atgProductVariance').value = atg.product_variance || 2;
+            document.getElementById('atgWaterVariance').value = atg.water_variance || 0.5;
+            document.getElementById('atgSimulateTrend').checked = atg.simulate_trend || false;
+            document.getElementById('atgConsumptionRate').value = atg.consumption_rate || 0.5;
+            document.getElementById('atgEnabled').checked = atg.enabled !== false;
+            document.getElementById('atgModal').classList.add('active');
+        }
+
+        function closeATGModal() {
+            document.getElementById('atgModal').classList.remove('active');
+        }
+
+        async function saveATG() {
+            const editingId = document.getElementById('editingATGId').value;
+            const address = document.getElementById('atgAddress').value || `8372${atgList.length}`;
+            const productType = document.getElementById('atgProductType').value || 'Diesel';
+
+            const atgData = {
+                name: document.getElementById('atgName').value || `ATG-${address}`,
+                address: address,
+                topic: document.getElementById('atgTopic').value || `ATG${address}`,
+                publish_interval: parseFloat(document.getElementById('atgInterval').value) || 2,
+                product_type: productType,
+                enabled: document.getElementById('atgEnabled').checked,
+                auto_variation: document.getElementById('atgAutoVariation').checked,
+                temp_variance: parseFloat(document.getElementById('atgTempVariance').value) || 0.5,
+                product_variance: parseFloat(document.getElementById('atgProductVariance').value) || 2,
+                water_variance: parseFloat(document.getElementById('atgWaterVariance').value) || 0.5,
+                simulate_trend: document.getElementById('atgSimulateTrend').checked,
+                consumption_rate: parseFloat(document.getElementById('atgConsumptionRate').value) || 0.5,
+                sensor_data: {
+                    Address: address,
+                    req_type: 0,
+                    Status: "0",
+                    Temp: parseFloat(document.getElementById('atgTemp').value) || 25.13,
+                    Product: parseFloat(document.getElementById('atgProduct').value) || 1234.12,
+                    Water: parseFloat(document.getElementById('atgWater').value) || 12.98
+                }
+            };
+
+            let result;
+            if (editingId) {
+                atgData.id = editingId;
+                result = await apiCall('/api/atg/update', 'POST', atgData);
+                if (result?.success) {
+                    addLog(`ATG "${atgData.name}" updated`, 'success');
+                }
+            } else {
+                result = await apiCall('/api/atg/add', 'POST', atgData);
+                if (result?.success) {
+                    addLog(`ATG "${atgData.name}" added`, 'success');
+                }
+            }
+
+            if (result?.success) {
+                closeATGModal();
+                await refreshStatus();
+            } else {
+                addLog(`Failed to save ATG: ${result?.message || 'Unknown error'}`, 'error');
+            }
+        }
+
+        async function removeATG(atgId) {
+            if (!confirm('Are you sure you want to remove this ATG?')) return;
+
+            const result = await apiCall('/api/atg/remove', 'POST', { id: atgId });
+            if (result?.success) {
+                addLog(result.message, 'warning');
+                await refreshStatus();
+            } else {
+                addLog(`Failed to remove ATG: ${result?.message || 'Unknown error'}`, 'error');
+            }
+        }
+
+        async function toggleATG(atgId, enabled) {
+            const result = await apiCall('/api/atg/update', 'POST', { id: atgId, enabled });
+            if (result?.success) {
+                await refreshStatus();
+            }
+        }
+
+        // ===== Render Functions =====
+        function renderATGCards() {
+            const dashboardList = document.getElementById('atgDashboardList');
+            const managementList = document.getElementById('atgManagementList');
+
+            if (atgList.length === 0) {
+                const emptyHtml = `
+                    <div class="no-atg-message">
+                        <h3>No ATGs Configured</h3>
+                        <p>Click "Add ATG" to create your first ATG simulator</p>
+                    </div>
+                `;
+                dashboardList.innerHTML = emptyHtml;
+                managementList.innerHTML = emptyHtml;
+                return;
+            }
+
+            const cardsHtml = atgList.map(atg => `
+                <div class="atg-card ${atg.enabled ? '' : 'disabled'}">
+                    <div class="atg-card-header">
+                        <span class="atg-name">${atg.name}</span>
+                        <div class="atg-status">
+                            <span class="atg-status-dot ${atg.enabled ? '' : 'disabled'}"></span>
+                            <span>${atg.enabled ? 'Active' : 'Disabled'}</span>
+                        </div>
+                    </div>
+                    <div class="atg-info">
+                        <div class="atg-info-item">
+                            <span class="atg-info-label">Address:</span>
+                            <span class="atg-info-value">${atg.address}</span>
+                        </div>
+                        <div class="atg-info-item">
+                            <span class="atg-info-label">Topic:</span>
+                            <span class="atg-info-value">${atg.topic}</span>
+                        </div>
+                        <div class="atg-info-item">
+                            <span class="atg-info-label">Product Type:</span>
+                            <span class="atg-info-value">${atg.product_type || 'Diesel'}</span>
+                        </div>
+                        <div class="atg-info-item">
+                            <span class="atg-info-label">Interval:</span>
+                            <span class="atg-info-value">${atg.publish_interval}s</span>
+                        </div>
+                        <div class="atg-info-item">
+                            <span class="atg-info-label">Messages:</span>
+                            <span class="atg-info-value">${atg.message_count || 0}</span>
+                        </div>
+                        <div class="atg-info-item">
+                            <span class="atg-info-label">Last Update:</span>
+                            <span class="atg-info-value">${atg.last_publish ? new Date(atg.last_publish).toLocaleTimeString() : '--'}</span>
+                        </div>
+                    </div>
+                    <div class="atg-gauges">
+                        <div class="mini-gauge">
+                            <div class="mini-gauge-value">${(atg.sensor_data?.Temp || 0).toFixed(1)}&deg;</div>
+                            <div class="mini-gauge-label">Temp (C)</div>
+                        </div>
+                        <div class="mini-gauge">
+                            <div class="mini-gauge-value">${(atg.sensor_data?.Product || 0).toFixed(0)}</div>
+                            <div class="mini-gauge-label">Product (mm)</div>
+                        </div>
+                        <div class="mini-gauge">
+                            <div class="mini-gauge-value">${(atg.sensor_data?.Water || 0).toFixed(1)}</div>
+                            <div class="mini-gauge-label">Water (mm)</div>
+                        </div>
+                    </div>
+                    <div class="atg-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="openEditATGModal('${atg.id}')">Edit</button>
+                        <button class="btn btn-sm ${atg.enabled ? 'btn-secondary' : 'btn-success'}"
+                                onclick="toggleATG('${atg.id}', ${!atg.enabled})">
+                            ${atg.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="removeATG('${atg.id}')">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+
+            dashboardList.innerHTML = cardsHtml;
+            managementList.innerHTML = cardsHtml;
+        }
+
+        // ===== Simulation Control =====
+        async function startSimulation() {
+            if (simulationRunning) return;
+
+            addLog('Starting simulation...', 'info');
+
+            // Save MQTT config first
+            await saveMQTTConfig();
+
+            const result = await apiCall('/api/start', 'POST');
+
+            if (result?.success) {
+                simulationRunning = true;
+                startTime = new Date();
+
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('connectionStatus').classList.add('connected');
+                document.getElementById('connectionText').textContent = 'Publishing';
+
+                addLog(result.message, 'success');
+
+                // Start polling
+                statusPollInterval = setInterval(refreshStatus, 1000);
+                uptimeInterval = setInterval(updateUptime, 1000);
+            } else {
+                addLog(`Failed to start: ${result?.message || 'Unknown error'}`, 'error');
+            }
+        }
+
+        async function stopSimulation() {
+            if (!simulationRunning) return;
+
+            const result = await apiCall('/api/stop', 'POST');
+
+            simulationRunning = false;
+
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('connectionStatus').classList.remove('connected');
+            document.getElementById('connectionText').textContent = 'Disconnected';
+
+            clearInterval(statusPollInterval);
+            clearInterval(uptimeInterval);
+
+            addLog(result?.message || 'Simulation stopped', 'warning');
+        }
+
+        async function resetSimulation() {
+            if (simulationRunning) {
+                await stopSimulation();
+            }
+
+            const result = await apiCall('/api/reset', 'POST');
+
+            atgList = [];
+            historyData = [];
+
+            document.getElementById('totalAtgCount').textContent = '0';
+            document.getElementById('atgCountDisplay').textContent = '0';
+            document.getElementById('totalMessageCount').textContent = '0';
+            document.getElementById('uptime').textContent = '00:00:00';
+            document.getElementById('publishRate').textContent = '0/s';
+            document.getElementById('totalErrorCount').textContent = '0';
+
+            renderATGCards();
+            updateHistoryTable();
+            addLog('Simulation reset to defaults', 'info');
+        }
+
+        // ===== Status Polling =====
+        async function refreshStatus() {
+            const status = await apiCall('/api/status');
+            if (!status) return;
+
+            atgList = status.atg_list || [];
+            simulationRunning = status.simulation_running;
+
+            // Update counts
+            document.getElementById('totalAtgCount').textContent = status.atg_count || 0;
+            document.getElementById('atgCountDisplay').textContent = status.atg_count || 0;
+            document.getElementById('totalMessageCount').textContent = status.total_message_count || 0;
+            document.getElementById('totalErrorCount').textContent = status.total_error_count || 0;
+
+            // Update connection status
+            if (status.mqtt_connected) {
+                document.getElementById('connectionStatus').classList.add('connected');
+                document.getElementById('connectionText').textContent = 'Connected';
+            }
+
+            // Calculate publish rate
+            if (startTime && status.total_message_count > 0) {
+                const elapsed = (new Date() - startTime) / 1000;
+                const rate = (status.total_message_count / elapsed).toFixed(2);
+                document.getElementById('publishRate').textContent = rate + '/s';
+            }
+
+            // Update last update time
+            document.getElementById('lastUpdate').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+
+            // Update broker details
+            if (status.mqtt_config) {
+                document.getElementById('detailBroker').textContent =
+                    `${status.mqtt_config.broker_ip}:${status.mqtt_config.broker_port}`;
+                document.getElementById('detailStatus').textContent =
+                    status.mqtt_connected ? 'Connected' : 'Disconnected';
+            }
+
+            renderATGCards();
+        }
+
+        function updateUptime() {
+            if (!startTime) return;
+            const elapsed = Math.floor((new Date() - startTime) / 1000);
+            const hours = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('uptime').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // ===== MQTT Configuration =====
+        async function saveMQTTConfig() {
+            const config = {
+                broker_ip: document.getElementById('brokerIP').value,
+                broker_port: parseInt(document.getElementById('brokerPort').value),
+                username: document.getElementById('mqttUsername').value,
+                password: document.getElementById('mqttPassword').value,
+                qos: parseInt(document.getElementById('qosLevel').value),
+                keep_alive: parseInt(document.getElementById('keepAlive').value),
+                clean_session: document.getElementById('cleanSession').checked
+            };
+
+            const result = await apiCall('/api/mqtt-config', 'POST', config);
+            if (result?.success) {
+                addLog('MQTT configuration saved', 'success');
+            }
+        }
+
+        async function testConnection() {
+            addLog('Testing connection...', 'info');
+            await saveMQTTConfig();
+
+            const result = await apiCall('/api/test-connection');
+            document.getElementById('detailLastTest').textContent = new Date().toLocaleTimeString();
+
+            if (result?.success) {
+                addLog('Connection test successful', 'success');
+                alert('Connection test successful!');
+            } else {
+                addLog('Connection test failed', 'error');
+                alert('Connection test failed! Check broker settings.');
+            }
+        }
+
+        function resetMQTTConfig() {
+            document.getElementById('brokerIP').value = '127.0.0.1';
+            document.getElementById('brokerPort').value = '1883';
+            document.getElementById('mqttUsername').value = 'duc';
+            document.getElementById('mqttPassword').value = 'SRT123';
+            document.getElementById('qosLevel').value = '1';
+            document.getElementById('keepAlive').value = '60';
+            document.getElementById('cleanSession').checked = true;
+            addLog('MQTT configuration reset to defaults', 'info');
+        }
+
+        // ===== History =====
+        async function loadHistory() {
+            const data = await apiCall('/api/history');
+            if (data) {
+                historyData = data;
+                updateHistoryTable();
+            }
+        }
+
+        function updateHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            if (historyData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted);">No data yet</td></tr>';
+                return;
+            }
+
+            const recentData = historyData.slice(-50).reverse();
+            tbody.innerHTML = recentData.map(entry => `
+                <tr>
+                    <td>${entry.id}</td>
+                    <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                    <td>${entry.atg_name || '--'}</td>
+                    <td>${entry.topic || '--'}</td>
+                    <td>${entry.product_type || 'Diesel'}</td>
+                    <td>${entry.Address}</td>
+                    <td>${(entry.Temp || 0).toFixed(2)} &deg;C</td>
+                    <td>${(entry.Product || 0).toFixed(2)} mm</td>
+                    <td>${(entry.Water || 0).toFixed(2)} mm</td>
+                    <td style="color: ${entry.Status === '0' ? '#00ff88' : '#ff4757'}">${entry.Status === '0' ? 'OK' : 'ERROR'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function clearHistory() {
+            historyData = [];
+            updateHistoryTable();
+            addLog('History cleared', 'info');
+        }
+
+        function exportHistory() {
+            if (historyData.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            const headers = ['ID', 'Timestamp', 'ATG Name', 'Topic', 'Product Type', 'Address', 'Temperature', 'Product', 'Water', 'Status'];
+            const csv = [
+                headers.join(','),
+                ...historyData.map(entry => [
+                    entry.id,
+                    entry.timestamp,
+                    entry.atg_name || '',
+                    entry.topic || '',
+                    entry.product_type || 'Diesel',
+                    entry.Address,
+                    (entry.Temp || 0).toFixed(2),
+                    (entry.Product || 0).toFixed(2),
+                    (entry.Water || 0).toFixed(2),
+                    entry.Status
+                ].join(','))
+            ].join('\n');
+
+            downloadFile('atg_history.csv', csv, 'text/csv');
+            addLog('History exported to CSV', 'success');
+        }
+
+        // ===== Logging =====
+        function addLog(message, type = 'info') {
+            const logConsole = document.getElementById('logConsole');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-message ${type}">${message}</span>`;
+            logConsole.appendChild(entry);
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logConsole').innerHTML = '';
+            addLog('Logs cleared', 'info');
+        }
+
+        function exportLogs() {
+            const logs = document.getElementById('logConsole').innerText;
+            downloadFile('atg_logs.txt', logs, 'text/plain');
+            addLog('Logs exported', 'success');
+        }
+
+        // ===== Utility =====
+        function downloadFile(filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // ===== Initialize =====
+        document.addEventListener('DOMContentLoaded', async () => {
+            addLog('ATG Simulator v2.0 (Multi-ATG) initialized', 'info');
+            addLog('Stingray Technologies - Ready to simulate', 'info');
+            await refreshStatus();
+            await loadHistory();
+
+            // Poll history periodically when simulation is running
+            setInterval(async () => {
+                if (simulationRunning) {
+                    await loadHistory();
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

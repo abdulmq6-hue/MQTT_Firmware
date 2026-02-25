@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATG Console | Stingray Technologies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-container">
+            <div class="login-branding">
+                <img src="SRT_Logo.png" alt="Stingray Technologies" class="login-logo">
+                <h1>ATG Console</h1>
+                <p class="login-subtitle">Automatic Tank Gauging System</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="form-field">
+                    <label for="username"><i class="fas fa-user"></i> Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username" required>
+                </div>
+                <div class="form-field">
+                    <label for="password"><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="remember-me"> Remember me
+                    </label>
+                </div>
+                <button type="submit" class="login-btn">
+                    <span>Sign In</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <div id="login-error" class="login-error hidden"></div>
+            </form>
+            <div class="login-footer">
+                <p>Stingray Technologies &copy; 2024</p>
+                <p class="version">Version 2.0.0</p>
+            </div>
+        </div>
+        <div class="login-bg-animation">
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-container" class="app-shell hidden">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="SRT_Logo.png" alt="SRT Logo" class="sidebar-logo">
+                <div class="sidebar-title">
+                    <h2>ATG Console</h2>
+                    <span class="version-tag">v2.0</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <span class="user-name" id="current-user">Administrator</span>
+                    <span class="user-role">System Admin</span>
+                </div>
+            </div>
+
+            <ul class="nav-links">
+                <li class="nav-section-title">Monitoring</li>
+                <li class="nav-item active" data-view="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </li>
+                <li class="nav-item" data-view="stations">
+                    <i class="fas fa-industry"></i>
+                    <span>Stations</span>
+                </li>
+                <li class="nav-item" data-view="tanks">
+                    <i class="fas fa-database"></i>
+                    <span>All Tanks</span>
+                </li>
+
+                <li class="nav-section-title">Analytics</li>
+                <li class="nav-item" data-view="charts">
+                    <i class="fas fa-chart-area"></i>
+                    <span>Live Charts</span>
+                </li>
+                <li class="nav-item" data-view="reports">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Reports</span>
+                </li>
+
+                <li class="nav-section-title">System</li>
+                <li class="nav-item" data-view="alarms">
+                    <i class="fas fa-bell"></i>
+                    <span>Alarms</span>
+                    <span class="badge" id="alarm-badge">0</span>
+                </li>
+                <li class="nav-item" data-view="events">
+                    <i class="fas fa-history"></i>
+                    <span>Event Log</span>
+                </li>
+                <li class="nav-item" data-view="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </li>
+                <li class="nav-item" data-view="calibration">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Calibration</span>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="connection-status">
+                    <span class="status-dot" id="connection-status"></span>
+                    <span id="status-text">Connecting...</span>
+                </div>
+                <div class="last-update">
+                    <i class="fas fa-sync-alt"></i>
+                    <span id="last-update-time">--:--:--</span>
+                </div>
+                <button class="logout-btn" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content">
+            <!-- Top Header Bar -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobile-menu-btn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="breadcrumb">
+                        <span id="current-page-title">Dashboard</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search tanks..." id="global-search">
+                    </div>
+                    <button class="header-btn notification-btn" onclick="showAlarms()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-count" id="notification-count">0</span>
+                    </button>
+                    <button class="header-btn" onclick="toggleFullscreen()">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <div class="header-time">
+                        <span id="header-clock">00:00:00</span>
+                        <span id="header-date">--</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Alert Banner -->
+            <div id="alert-banner" class="alert-banner hidden">
+                <div class="alert-content">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="alert-message">No active alerts</span>
+                </div>
+                <button class="alert-close" onclick="closeAlertBanner()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-section active">
+                <!-- Stats Overview -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <i class="fas fa-tint"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="total-volume">0</span>
+                            <span class="stat-label">Total Volume (L)</span>
+                        </div>
+                        <div class="stat-trend up">
+                            <i class="fas fa-arrow-up"></i> 2.4%
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="online-tanks">0</span>
+                            <span class="stat-label">Online Tanks</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="active-alarms">0</span>
+                            <span class="stat-label">Active Alarms</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">
+                            <i class="fas fa-thermometer-half"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="avg-temp">--</span>
+                            <span class="stat-label">Avg Temperature</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Dashboard Grid -->
+                <div class="dashboard-grid">
+                    <!-- Tank Overview -->
+                    <div class="dashboard-card tanks-overview">
+                        <div class="card-header">
+                            <h3><i class="fas fa-database"></i> Tank Status</h3>
+                            <div class="card-actions">
+                                <select id="station-filter" class="filter-select">
+                                    <option value="all">All Stations</option>
+                                </select>
+                                <button class="card-btn" onclick="refreshTanks()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="tanks-grid" class="tanks-grid">
+                                <div class="empty-state">
+                                    <div class="loader"></div>
+                                    <p>Connecting to ATG devices...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Chart -->
+                    <div class="dashboard-card live-chart">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> Volume Trend</h3>
+                            <div class="card-actions">
+                                <select id="chart-tank-select" class="filter-select">
+                                    <option value="">Select Tank</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="dashboard-chart" class="chart-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Alarms -->
+                    <div class="dashboard-card recent-alarms">
+                        <div class="card-header">
+                            <h3><i class="fas fa-bell"></i> Recent Alarms</h3>
+                            <a href="#" class="view-all-link" onclick="switchView('alarms'); return false;">View All</a>
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-alarms-list" class="alarms-list">
+                                <div class="no-alarms">
+                                    <i class="fas fa-check-circle"></i>
+                                    <p>No active alarms</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Status -->
+                    <div class="dashboard-card system-status">
+                        <div class="card-header">
+                            <h3><i class="fas fa-server"></i> System Status</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-list">
+                                <div class="status-item">
+                                    <span class="status-name">MQTT Broker</span>
+                                    <span class="status-indicator online" id="mqtt-status">
+                                        <i class="fas fa-circle"></i> Online
+                                    </span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-name">Database</span>
+                                    <span class="status-indicator online" id="db-status">
+                                        <i class="fas fa-circle"></i> Online
+                                    </span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-name">Device Poller</span>
+                                    <span class="status-indicator" id="poller-status">
+                                        <i class="fas fa-circle"></i> Checking...
+                                    </span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-name">WebSocket</span>
+                                    <span class="status-indicator" id="ws-status">
+                                        <i class="fas fa-circle"></i> Connecting...
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stations View -->
+            <div id="view-stations" class="view-section hidden">
+                <div class="page-header">
+                    <h2>Station Management</h2>
+                    <button class="btn-primary" onclick="openAddStationModal()">
+                        <i class="fas fa-plus"></i> Add Station
+                    </button>
+                </div>
+                <div class="stations-grid" id="stations-grid">
+                    <!-- Station cards will be rendered here -->
+                </div>
+            </div>
+
+            <!-- All Tanks View -->
+            <div id="view-tanks" class="view-section hidden">
+                <div class="page-header">
+                    <h2>Tank Inventory</h2>
+                    <div class="header-controls">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="tank-search" placeholder="Search tanks...">
+                        </div>
+                        <select id="product-filter" class="filter-select">
+                            <option value="all">All Products</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="petrol">Petrol</option>
+                            <option value="hsd">HSD</option>
+                            <option value="kerosene">Kerosene</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="tanks-table-wrapper">
+                    <table class="data-table" id="tanks-table">
+                        <thead>
+                            <tr>
+                                <th>Tank ID</th>
+                                <th>Station</th>
+                                <th>Product</th>
+                                <th>Level (mm)</th>
+                                <th>Volume (L)</th>
+                                <th>Water (mm)</th>
+                                <th>Temp (C)</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tanks-table-body">
+                            <!-- Tank rows will be rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Charts View -->
+            <div id="view-charts" class="view-section hidden">
+                <div class="page-header">
+                    <h2>Live Analytics</h2>
+                    <div class="header-controls">
+                        <select id="analytics-tank" class="filter-select">
+                            <option value="">Select Tank</option>
+                        </select>
+                        <select id="analytics-range" class="filter-select">
+                            <option value="1h">Last Hour</option>
+                            <option value="6h">Last 6 Hours</option>
+                            <option value="24h" selected>Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                        </select>
+                        <button class="btn-secondary" onclick="loadAnalyticsChart()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card full-width">
+                        <h4>Volume & Level Trend</h4>
+                        <div id="volume-trend-chart" class="chart-container large"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Temperature History</h4>
+                        <div id="temp-chart" class="chart-container"></div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Water Level</h4>
+                        <div id="water-chart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports View -->
+            <div id="view-reports" class="view-section hidden">
+                <div class="page-header">
+                    <h2>Reports & Export</h2>
+                </div>
+                <div class="reports-grid">
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-file-csv"></i>
+                        </div>
+                        <h3>Export Tank Data</h3>
+                        <p>Download historical telemetry data in CSV format</p>
+                        <div class="report-form">
+                            <div class="form-row">
+                                <label>Tank</label>
+                                <select id="report-tank-select">
+                                    <option value="">Select Tank</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>Date Range</label>
+                                <select id="report-range">
+                                    <option value="24h">Last 24 Hours</option>
+                                    <option value="7d">Last 7 Days</option>
+                                    <option value="30d">Last 30 Days</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" onclick="downloadReport()">
+                                <i class="fas fa-download"></i> Download CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <h3>Daily Summary</h3>
+                        <p>Generate PDF report with daily statistics</p>
+                        <div class="report-form">
+                            <div class="form-row">
+                                <label>Station</label>
+                                <select id="summary-station">
+                                    <option value="all">All Stations</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>Date</label>
+                                <input type="date" id="summary-date">
+                            </div>
+                            <button class="btn-primary" onclick="generateSummary()">
+                                <i class="fas fa-file-pdf"></i> Generate PDF
+                            </button>
+                        </div>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <h3>Alarm History</h3>
+                        <p>Export alarm and event history</p>
+                        <div class="report-form">
+                            <div class="form-row">
+                                <label>Date Range</label>
+                                <select id="alarm-report-range">
+                                    <option value="7d">Last 7 Days</option>
+                                    <option value="30d">Last 30 Days</option>
+                                    <option value="90d">Last 90 Days</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" onclick="downloadAlarmReport()">
+                                <i class="fas fa-download"></i> Download Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alarms View -->
+            <div id="view-alarms" class="view-section hidden">
+                <div class="page-header">
+                    <h2>Alarm Management</h2>
+                    <div class="header-controls">
+                        <button class="btn-secondary" onclick="acknowledgeAllAlarms()">
+                            <i class="fas fa-check-double"></i> Acknowledge All
+                        </button>
+                    </div>
+                </div>
+                <div class="alarms-panel">
+                    <div class="alarms-filters">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="active">Active</button>
+                        <button class="filter-btn" data-filter="acknowledged">Acknowledged</button>
+                        <button class="filter-btn" data-filter="resolved">Resolved</button>
+                    </div>
+                    <div class="alarms-table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Tank</th>
+                                    <th>Type</th>
+                                    <th>Severity</th>
+                                    <th>Value</th>
+                                    <th>Threshold</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alarms-table-body">
+                                <!-- Alarm rows will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events View -->
+            <div id="view-events" class="view-section hidden">
+                <div class="page-header">
+                    <h2>Event Log</h2>
+                    <div class="header-controls">
+                        <select id="event-type-filter" class="filter-select">
+                            <option value="all">All Events</option>
+                            <option value="SYSTEM">System</option>
+                            <option value="DEVICE">Device</option>
+                            <option value="ALARM">Alarm</option>
+                            <option value="USER">User</option>
+                        </select>
+                        <button class="btn-secondary" onclick="refreshEvents()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="events-timeline" id="events-timeline">
+                    <!-- Event items will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="view-settings" class="view-section hidden">
+                <div class="page-header">
+                    <h2>System Settings</h2>
+                </div>
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h3><i class="fas fa-bell"></i> Alarm Thresholds</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label>Low Level Alarm (L)</label>
+                                <input type="number" id="setting-low-alarm" placeholder="1000">
+                            </div>
+                            <div class="form-group">
+                                <label>High Level Alarm (L)</label>
+                                <input type="number" id="setting-high-alarm" placeholder="18000">
+                            </div>
+                            <div class="form-group">
+                                <label>High Water Alarm (mm)</label>
+                                <input type="number" id="setting-water-alarm" placeholder="50">
+                            </div>
+                            <div class="form-group">
+                                <label>High Temperature Alarm (C)</label>
+                                <input type="number" id="setting-temp-alarm" placeholder="40">
+                            </div>
+                            <button class="btn-primary" onclick="saveAlarmSettings()">
+                                <i class="fas fa-save"></i> Save Thresholds
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <h3><i class="fas fa-envelope"></i> Notifications</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="email-notifications" checked>
+                                    <span class="toggle-switch"></span>
+                                    Email Notifications
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="sms-notifications">
+                                    <span class="toggle-switch"></span>
+                                    SMS Notifications
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Notification Email</label>
+                                <input type="email" id="notification-email" placeholder="admin@example.com">
+                            </div>
+                            <button class="btn-primary" onclick="saveNotificationSettings()">
+                                <i class="fas fa-save"></i> Save Notifications
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <h3><i class="fas fa-palette"></i> Display Settings</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label>Refresh Interval (seconds)</label>
+                                <select id="refresh-interval">
+                                    <option value="5">5 seconds</option>
+                                    <option value="10" selected>10 seconds</option>
+                                    <option value="30">30 seconds</option>
+                                    <option value="60">60 seconds</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Volume Unit</label>
+                                <select id="volume-unit">
+                                    <option value="liters" selected>Liters (L)</option>
+                                    <option value="gallons">Gallons (Gal)</option>
+                                    <option value="barrels">Barrels (BBL)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Temperature Unit</label>
+                                <select id="temp-unit">
+                                    <option value="celsius" selected>Celsius (C)</option>
+                                    <option value="fahrenheit">Fahrenheit (F)</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" onclick="saveDisplaySettings()">
+                                <i class="fas fa-save"></i> Save Display
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-card">
+                        <h3><i class="fas fa-upload"></i> DIP Chart Management</h3>
+                        <div class="settings-form">
+                            <div class="form-group">
+                                <label>Select Tank</label>
+                                <select id="dip-tank-select">
+                                    <option value="">Select Tank</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Upload DIP Chart (PDF)</label>
+                                <div class="file-upload">
+                                    <input type="file" id="dip-file-input" accept=".pdf">
+                                    <label for="dip-file-input" class="file-upload-label">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <span>Choose PDF File</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <button class="btn-primary" onclick="uploadDipChart()">
+                                <i class="fas fa-upload"></i> Upload DIP Chart
+                            </button>
+                            <div id="dip-upload-status" class="upload-status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calibration View -->
+            <div id="view-calibration" class="view-section hidden">
+                <div class="page-header">
+                    <h2>Tank Calibration</h2>
+                </div>
+                <div class="calibration-info">
+                    <div class="info-banner">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Use this page to calibrate tank sensors. When a tank is empty, set the calibration offset to correct the zero-point reading.</p>
+                    </div>
+                </div>
+                <div class="calibration-grid">
+                    <div class="calibration-card">
+                        <h3><i class="fas fa-sliders-h"></i> Set Calibration Offset</h3>
+                        <div class="calibration-form">
+                            <div class="form-group">
+                                <label>Select Tank</label>
+                                <select id="calibration-tank-select">
+                                    <option value="">Select a tank...</option>
+                                </select>
+                            </div>
+                            <div class="current-readings" id="calibration-current-readings" style="display: none;">
+                                <h4>Current Readings</h4>
+                                <div class="readings-grid">
+                                    <div class="reading-item">
+                                        <span class="reading-label">Product Level</span>
+                                        <span class="reading-value" id="cal-current-product">-- mm</span>
+                                    </div>
+                                    <div class="reading-item">
+                                        <span class="reading-label">Water Level</span>
+                                        <span class="reading-value" id="cal-current-water">-- mm</span>
+                                    </div>
+                                    <div class="reading-item">
+                                        <span class="reading-label">Volume</span>
+                                        <span class="reading-value" id="cal-current-volume">-- L</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="calibration-offset-section">
+                                <h4>Product Level Offset</h4>
+                                <div class="offset-input-row">
+                                    <div class="form-group">
+                                        <label>Offset (mm)</label>
+                                        <input type="number" id="calibration-product-offset" placeholder="0" step="0.1">
+                                    </div>
+                                    <div class="current-offset">
+                                        <span class="offset-label">Current:</span>
+                                        <span class="offset-value" id="cal-product-offset-current">0 mm</span>
+                                    </div>
+                                    <button class="btn-secondary btn-sm" onclick="setZeroPoint('product')">
+                                        <i class="fas fa-crosshairs"></i> Set Zero
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="calibration-offset-section">
+                                <h4>Water Level Offset</h4>
+                                <div class="offset-input-row">
+                                    <div class="form-group">
+                                        <label>Offset (mm)</label>
+                                        <input type="number" id="calibration-water-offset" placeholder="0" step="0.1">
+                                    </div>
+                                    <div class="current-offset">
+                                        <span class="offset-label">Current:</span>
+                                        <span class="offset-value" id="cal-water-offset-current">0 mm</span>
+                                    </div>
+                                    <button class="btn-secondary btn-sm" onclick="setZeroPoint('water')">
+                                        <i class="fas fa-crosshairs"></i> Set Zero
+                                    </button>
+                                </div>
+                            </div>
+                            <span class="form-hint">Positive offset subtracts from raw sensor reading when tank is empty</span>
+                            <div class="calibration-actions">
+                                <button class="btn-primary" onclick="saveCalibration()">
+                                    <i class="fas fa-save"></i> Save Calibration
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calibration-card">
+                        <h3><i class="fas fa-list"></i> All Tank Offsets</h3>
+                        <div class="calibration-table-wrapper">
+                            <table class="data-table" id="calibration-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tank ID</th>
+                                        <th>Product Offset (mm)</th>
+                                        <th>Water Offset (mm)</th>
+                                        <th>Last Calibrated</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calibration-table-body">
+                                    <!-- Calibration rows will be rendered here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tank Detail View -->
+            <div id="view-details" class="view-section hidden">
+                <div class="detail-header">
+                    <button class="btn-back" onclick="showDashboard()">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div class="detail-title">
+                        <h2 id="detail-tank-name">Tank Details</h2>
+                        <span class="detail-station" id="detail-station">Station: --</span>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn-secondary" onclick="refreshTankDetails()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn-secondary" onclick="openTankSettings()">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button class="btn-danger" onclick="deleteTank()">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+
+                <div class="detail-layout">
+                    <!-- Tank Visual -->
+                    <div class="detail-visual-card">
+                        <div class="tank-3d-visual">
+                            <div class="tank-cylinder">
+                                <div class="liquid-fill" id="detail-liquid"></div>
+                                <div class="water-fill" id="detail-water"></div>
+                                <div class="tank-scale">
+                                    <span>100%</span>
+                                    <span>75%</span>
+                                    <span>50%</span>
+                                    <span>25%</span>
+                                    <span>0%</span>
+                                </div>
+                            </div>
+                            <div class="tank-label">
+                                <label for="detail-product-type-select" class="product-type-label">Product Type:</label>
+                                <select id="detail-product-type-select" class="product-type-select" onchange="updateProductType()">
+                                    <option value="PMG">PMG (Premium Motor Gasoline)</option>
+                                    <option value="HOBC">HOBC (High Octane)</option>
+                                    <option value="HSD" selected>HSD (High Speed Diesel)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="detail-metrics">
+                            <div class="metric-item large">
+                                <div class="metric-value" id="detail-volume">--</div>
+                                <div class="metric-label">Volume (L)</div>
+                            </div>
+                            <div class="metric-row">
+                                <div class="metric-item">
+                                    <div class="metric-icon"><i class="fas fa-ruler-vertical"></i></div>
+                                    <div class="metric-data">
+                                        <span class="metric-value" id="detail-product">--</span>
+                                        <span class="metric-label">Product (mm)</span>
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-icon"><i class="fas fa-water"></i></div>
+                                    <div class="metric-data">
+                                        <span class="metric-value" id="detail-water-val">--</span>
+                                        <span class="metric-label">Water (mm)</span>
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-icon"><i class="fas fa-thermometer-half"></i></div>
+                                    <div class="metric-data">
+                                        <span class="metric-value" id="detail-temp">--</span>
+                                        <span class="metric-label">Temp (C)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-timestamp">
+                            <i class="fas fa-clock"></i>
+                            <span>Last Update: </span>
+                            <span id="detail-timestamp">--</span>
+                        </div>
+                    </div>
+
+                    <!-- History Chart -->
+                    <div class="detail-chart-card">
+                        <div class="card-header">
+                            <h3>Historical Data</h3>
+                            <div class="card-actions">
+                                <select id="detail-chart-range" onchange="loadDetailChart()">
+                                    <option value="1h">1 Hour</option>
+                                    <option value="6h">6 Hours</option>
+                                    <option value="24h" selected>24 Hours</option>
+                                    <option value="7d">7 Days</option>
+                                </select>
+                                <button class="btn-icon" onclick="downloadDetailChart()">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="detail-history-chart" class="chart-container large"></div>
+                    </div>
+
+                    <!-- Tank Info -->
+                    <div class="detail-info-card">
+                        <h3>Tank Information</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <label>Capacity</label>
+                                <span id="detail-capacity">-- L</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Height</label>
+                                <span id="detail-height">-- mm</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Diameter</label>
+                                <span id="detail-diameter">-- mm</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Device Address</label>
+                                <span id="detail-address">--</span>
+                            </div>
+                            <div class="info-item">
+                                <label>Low Level Alert</label>
+                                <span id="detail-low-level">-- mm</span>
+                            </div>
+                            <div class="info-item">
+                                <label>High Level Alert</label>
+                                <span id="detail-high-level">-- mm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeConfirmModal()"></div>
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3 id="confirm-title">Confirm Action</h3>
+                <button class="close-btn" onclick="closeConfirmModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn-danger" id="confirm-btn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

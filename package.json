@@ -1,0 +1,24 @@
+{
+  "name": "atg-mqtt-broker-ui",
+  "version": "1.0.0",
+  "description": "MQTT Broker and Web UI for ATG Simulator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "aedes": "^0.51.0",
+    "aedes-server-factory": "^0.1.0",
+    "axios": "^1.13.2",
+    "express": "^4.18.2",
+    "mqtt": "^5.14.1",
+    "mqtt-packet": "^9.0.0",
+    "multer": "^2.0.2",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.16.3",
+    "serialport": "^13.0.0",
+    "socket.io": "^4.7.4",
+    "socket.io-client": "^4.7.4"
+  }
+}
