@@ -1,0 +1,15 @@
+{
+  "name": "atg_poller",
+  "version": "1.0.0",
+  "bin": "atg_poller.js",
+  "dependencies": {
+    "mqtt": "^5.15.0",
+    "serialport": "^11.0.0"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/serialport/**/*",
+      "node_modules/@serialport/bindings-cpp/build/Release/*.node"
+    ]
+  }
+}

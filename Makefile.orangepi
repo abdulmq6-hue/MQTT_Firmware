@@ -1,0 +1,114 @@
+# ==============================================
+# ATG Poller - Makefile for Orange Pi 3 LTS
+# Stingray Technologies
+# ==============================================
+#
+# USAGE:
+#   Native compile on Orange Pi:  make -f Makefile.orangepi
+#   Cross-compile from x86:       make -f Makefile.orangepi CROSS=1
+#   Clean build files:            make -f Makefile.orangepi clean
+#   Install on Orange Pi:         make -f Makefile.orangepi install
+#
+# ==============================================
+
+# Output binary name
+TARGET = atg_poller
+
+# Source files (Linux versions)
+SRCS = main_linux.c uart_linux.c atg.c mqtt.c
+
+# Object files
+OBJS = $(SRCS:.c=.o)
+
+# Compiler selection
+ifdef CROSS
+    # Cross-compilation from x86 Linux/Windows (using ARM toolchain)
+    # Install: sudo apt install gcc-aarch64-linux-gnu
+    CC = aarch64-linux-gnu-gcc
+    CROSS_PREFIX = aarch64-linux-gnu-
+else
+    # Native compilation on Orange Pi
+    CC = gcc
+    CROSS_PREFIX =
+endif
+
+# Compiler flags
+CFLAGS = -Wall -Wextra -O2 -I.
+
+# Linker flags
+# -lpaho-mqtt3c : Eclipse Paho MQTT C library
+# -lm           : Math library
+# -lpthread     : POSIX threads
+LDFLAGS = -lpaho-mqtt3c -lm -lpthread
+
+# Default target
+all: $(TARGET)
+
+# Link object files to create executable
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
+	@echo ""
+	@echo "Build complete: $(TARGET)"
+	@echo ""
+
+# Compile source files to object files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Clean build files
+clean:
+	rm -f $(OBJS) $(TARGET)
+	@echo "Cleaned build files"
+
+# Install to /usr/local/bin (run with sudo)
+install: $(TARGET)
+	sudo cp $(TARGET) /usr/local/bin/
+	sudo chmod +x /usr/local/bin/$(TARGET)
+	@echo "Installed $(TARGET) to /usr/local/bin/"
+
+# Uninstall
+uninstall:
+	sudo rm -f /usr/local/bin/$(TARGET)
+	@echo "Uninstalled $(TARGET)"
+
+# Create systemd service file
+service:
+	@echo "[Unit]" > atg_poller.service
+	@echo "Description=ATG Poller Service" >> atg_poller.service
+	@echo "After=network.target" >> atg_poller.service
+	@echo "" >> atg_poller.service
+	@echo "[Service]" >> atg_poller.service
+	@echo "Type=simple" >> atg_poller.service
+	@echo "ExecStart=/usr/local/bin/atg_poller" >> atg_poller.service
+	@echo "Restart=always" >> atg_poller.service
+	@echo "RestartSec=5" >> atg_poller.service
+	@echo "User=root" >> atg_poller.service
+	@echo "" >> atg_poller.service
+	@echo "[Install]" >> atg_poller.service
+	@echo "WantedBy=multi-user.target" >> atg_poller.service
+	@echo "Created atg_poller.service"
+	@echo "To install: sudo cp atg_poller.service /etc/systemd/system/"
+	@echo "To enable:  sudo systemctl enable atg_poller"
+	@echo "To start:   sudo systemctl start atg_poller"
+
+# Show help
+help:
+	@echo "ATG Poller Makefile for Orange Pi 3 LTS"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all      - Build the atg_poller binary (default)"
+	@echo "  clean    - Remove build files"
+	@echo "  install  - Install to /usr/local/bin (requires sudo)"
+	@echo "  uninstall- Remove from /usr/local/bin"
+	@echo "  service  - Generate systemd service file"
+	@echo "  help     - Show this help message"
+	@echo ""
+	@echo "Options:"
+	@echo "  CROSS=1  - Use ARM cross-compiler (for building on x86)"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make -f Makefile.orangepi              # Native build on Orange Pi"
+	@echo "  make -f Makefile.orangepi CROSS=1      # Cross-compile from x86"
+	@echo "  sudo make -f Makefile.orangepi install # Install binary"
+
+.PHONY: all clean install uninstall service help
